@@ -27,7 +27,8 @@ setup_logo_service(){
       mkdir -p "$APP_DIR"
       cp ./* "$APP_DIR/"
       cd ".."
-      go build -o "$APP_DIR/bin" .
+      #go build -o "$APP_DIR/bin" .
+      cp bin-arm "$APP_DIR/bin"
       cp ".env.$SERV_NAME" "$APP_DIR/.env"
 
       cd "$APP_DIR" || exit

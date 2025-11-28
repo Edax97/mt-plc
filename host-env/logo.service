@@ -7,8 +7,8 @@ After=network-online.target
 Type=exec
 RemainAfterExit=no
 Environment=PATH=/usr/bin:/bin:/usr/local/bin:/usr/local/go/bin
-EnvironmentFile={DIR}/.env
-ExecStart={DIR}/start.sh
+EnvironmentFile=/home/pi/{DIR}/.env
+ExecStart=/home/pi/{DIR}/start.sh
 
 [Install]
 WantedBy=default.target
