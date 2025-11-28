@@ -6,8 +6,7 @@ After=network-online.target
 [Service]
 Type=exec
 RemainAfterExit=no
-TimeoutStopSec=180
-Environment=PATH=/usr/bin:/bin:/usr/local/bin
+Environment=PATH=/usr/bin:/bin:/usr/local/bin:/usr/local/go/bin
 EnvironmentFile={DIR}/.env
 ExecStart={DIR}/start.sh
 
