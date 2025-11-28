@@ -25,12 +25,13 @@ setup_logo_service(){
       APP_DIR="$HOME/$PLC_DIR"
 
       mkdir -p "$APP_DIR"
-      cp ./* "$APP_DIR"
+      cp ./* "$APP_DIR/"
       cd ".."
       go build -o "$APP_DIR/bin" .
       cp ".env.$SERV_NAME" "$APP_DIR/.env"
 
       cd "$APP_DIR" || exit
+      sudo chmod 775 start.sh
       sed -i "s/{DIR}/$PLC_DIR/g" logo.service
       sudo cp logo.service "/etc/systemd/system/$SERV_NAME.service"
     else
