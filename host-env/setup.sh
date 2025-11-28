@@ -51,5 +51,5 @@ readarray -t services <<< "$LOGO_SERVICES"
 for i in "${!dirs[@]}"; do
     dir="${dirs[i]}"
     ser="${services[i]}"
-    setup_logo_service_T "$dir" "$ser"
+    setup_logo_service "$dir" "$ser"
 done
