@@ -1,0 +1,15 @@
+[Unit]
+Description=Run start.sh
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=exec
+RemainAfterExit=no
+TimeoutStopSec=180
+Environment=PATH=/usr/bin:/bin:/usr/local/bin
+EnvironmentFile={DIR}/.env
+ExecStart={DIR}/start.sh
+
+[Install]
+WantedBy=default.target
