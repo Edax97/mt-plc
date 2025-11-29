@@ -5,10 +5,11 @@ After=network-online.target
 
 [Service]
 Type=exec
-RemainAfterExit=no
 Environment=PATH=/usr/bin:/bin:/usr/local/bin:/usr/local/go/bin
 EnvironmentFile=/home/pi/{DIR}/.env
 ExecStart=/home/pi/{DIR}/start.sh
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=default.target
