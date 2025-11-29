@@ -24,6 +24,9 @@ func NewModbusConn(address string, timeout time.Duration) (IModbusIO, error) {
 // Write unit tests for methods in this file
 func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	inputBool := make([]bool, len(addressList))
+	if len(addressList) == 0 {
+		return inputBool, nil
+	}
 	iStart := extremeValue(addressList, min16)
 	iEnd := extremeValue(addressList, max16)
 	iQty := iEnd - iStart + 1
@@ -40,8 +43,10 @@ func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 }
 
 func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
-
 	coilsBool := make([]bool, len(addressList))
+	if len(addressList) == 0 {
+		return coilsBool, nil
+	}
 
 	qStart := extremeValue(addressList, min16)
 	qEnd := extremeValue(addressList, max16)
@@ -60,6 +65,10 @@ func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 }
 
 func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
+	analogs := make([]float32, len(addressList))
+	if len(addressList) == 0 {
+		return analogs, nil
+	}
 	aStart := extremeValue(addressList, min16)
 	aEnd := extremeValue(addressList, max16)
 	aQty := aEnd - aStart + 1
@@ -69,7 +78,6 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	if err != nil {
 		return nil, err
 	}
-	analogs := make([]float32, len(addressList))
 	for j, add := range addressList {
 		analogs[j] = getFloat(bytesArr, add-aStart)
 	}

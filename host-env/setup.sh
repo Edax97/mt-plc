@@ -25,7 +25,7 @@ setup_logo_service(){
       APP_DIR="$HOME/$PLC_DIR"
 
       mkdir -p "$APP_DIR"
-      cp ./* "$APP_DIR/"
+      cp start.sh logo.service "$APP_DIR/"
       cd ".."
       #go build -o "$APP_DIR/bin" .
       cp bin-arm "$APP_DIR/bin"
@@ -44,9 +44,7 @@ setup_logo_service(){
 }
 
 
-
-LOGO_DIRS="H20"
-LOGO_SERVICES="agua_panel"
+source env.sh
 readarray -t dirs <<< "$LOGO_DIRS"
 readarray -t services <<< "$LOGO_SERVICES"
 
