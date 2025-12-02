@@ -44,11 +44,11 @@ func (c *WailonConnection) SendData(params string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	message := fmt.Sprintf("NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s;", params)
+	message := fmt.Sprintf("NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s", params)
 	CRC := crcChecksum([]byte(message))
 	res, err := writePacket(fmt.Sprintf("#D#%s%s\r\n", message, CRC), c.conn)
 	if err != nil {
-		return fmt.Errorf("when writing to wailon, got: %w", err)
+		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, message)
 	}
 
 	if !strings.Contains(res, "#AD#1") {
