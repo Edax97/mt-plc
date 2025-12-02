@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 type WailonConnection struct {
@@ -44,11 +45,16 @@ func (c *WailonConnection) SendData(params string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	message := fmt.Sprintf("NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s", params)
+	t := time.Now()
+	date := t.In(time.UTC).Format("020106")
+	second := t.In(time.UTC).Format("150405")
+
+	message := fmt.Sprintf("%s;%s;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s;", date, second, params)
 	CRC := crcChecksum([]byte(message))
-	res, err := writePacket(fmt.Sprintf("#D#%s%s\r\n", message, CRC), c.conn)
+	packet := fmt.Sprintf("#D#%s%s\r\n", message, CRC)
+	res, err := writePacket(packet, c.conn)
 	if err != nil {
-		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, message)
+		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, packet)
 	}
 
 	if !strings.Contains(res, "#AD#1") {
