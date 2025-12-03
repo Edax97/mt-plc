@@ -31,7 +31,6 @@ func (s *MockServer) SendData(params string) error {
 	CRC := crcChecksum([]byte(message))
 	packet := fmt.Sprintf("#D#%s%s\r\n", message, CRC)
 	fmt.Printf("Sending... %s", packet)
-	panic("implement me")
 }
 
 func (s *MockServer) ReadCommand() (string, string, error) {
