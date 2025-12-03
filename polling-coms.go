@@ -25,17 +25,18 @@ type IDataIO interface {
 	ReadCommand() (string, string, error)
 }
 
-func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, period time.Duration) {
-	ticker := time.NewTicker(period)
-
+func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
+	ticker := time.NewTicker(pollPeriod)
 	defer ticker.Stop()
+
+	uploadedAt := time.Now()
 
 	defer func() {
 		_ = plcConn.Close()
 		wConn.CloseSocket()
 	}()
 
-	readMemory := newReading(6)
+	readMemory := newReading(len(addrRead.logo), len(addrAnalog.logo))
 
 	for {
 		select {
@@ -72,13 +73,15 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 				continue
 			}
 			if !readMemory.ChangeInReading(append(inputVals, coilVals...)) &&
-				!readMemory.ChangeInFloat(anagVals) {
+				!readMemory.ChangeInFloat(anagVals) &&
+				!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
 				log.Print("No change in registers")
 				if err := wConn.SendPing(); err != nil {
 					log.Printf("Error sending ping: %v", err)
 				}
 				continue
 			}
+			uploadedAt = time.Now()
 
 			regReadings := append(inputVals, coilVals...)
 			dataStr := ""
@@ -149,7 +152,7 @@ type Reading struct {
 	sent       bool
 }
 
-func newReading(s int) *Reading {
+func newReading(s, sf int) *Reading {
 	l := make([]bool, s)
 	f := make([]float32, s)
 	return &Reading{l, f, false}

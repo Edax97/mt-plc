@@ -66,6 +66,7 @@ func main() {
 	}
 
 	period := flag.Int("period", 5, "Periodo de polling en s")
+	uploadPeriod := flag.Int("uploadPeriod", 10, "Periodo para upload en min")
 	flag.Parse()
 
 	timeoutMs := 2000
@@ -98,5 +99,7 @@ func main() {
 	}()
 
 	log.Printf("Conectado a %s", UrlWailon)
-	pollLoop(ctx, plcConn, wailonCon, addrRead, addrWrite, addrAnalog, time.Duration(*period)*time.Second)
+	pollLoop(ctx, plcConn, wailonCon, addrRead, addrWrite, addrAnalog,
+		time.Duration(*period)*time.Second,
+		time.Duration(*uploadPeriod)*time.Minute)
 }
