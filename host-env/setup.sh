@@ -39,7 +39,7 @@ setup_logo_service(){
     else
       sudo systemctl daemon-reload
       sudo systemctl enable "$SERV_NAME.service"
-      sudo systemctl start "$SERV_NAME.service"
+      sudo systemctl restart "$SERV_NAME.service"
       echo "Service $SERV_NAME started"
     fi
 }

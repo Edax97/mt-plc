@@ -43,7 +43,7 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			log.Print("Tick")
+			//log.Print("Tick")
 			inputAddrs := make([]uint16, 0)
 			coilAddrs := make([]uint16, 0)
 
@@ -75,7 +75,7 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 			if !readMemory.ChangeInReading(append(inputVals, coilVals...)) &&
 				!readMemory.ChangeInFloat(anagVals) &&
 				!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
-				log.Print("No change in registers")
+				//log.Print("No change in registers")
 				if err := wConn.SendPing(); err != nil {
 					log.Printf("Error sending ping: %v", err)
 				}
