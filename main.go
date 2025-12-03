@@ -89,7 +89,6 @@ func main() {
 	} else {
 		wailonCon = &wailonServer.WailonConnection{Imei: Imei}
 	}
-
 	err = wailonCon.OpenSocket(UrlWailon, PortWailon)
 	if err != nil {
 		log.Fatalf("no se pudo conectar al servidor wailon: %v", err)

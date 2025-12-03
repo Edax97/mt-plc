@@ -33,6 +33,7 @@ setup_logo_service(){
 
       cd "$APP_DIR" || exit
       sudo chmod 775 start.sh
+      sed -i "s/DIR/$PLC_DIR/g" start.sh
       sed -i "s/{DIR}/$PLC_DIR/g" logo.service
       sudo cp logo.service "/etc/systemd/system/$SERV_NAME.service"
     else
