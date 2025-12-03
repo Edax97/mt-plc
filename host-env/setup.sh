@@ -26,7 +26,7 @@ setup_logo_service(){
       sudo systemctl stop "$SERV_NAME.service"
 
       mkdir -p "$APP_DIR"
-      cp start.sh logo.service "$APP_DIR/"
+      cp start.sh "$APP_DIR/"
       cd ".."
       #go build -o "$APP_DIR/bin" .
       cp bin-arm "$APP_DIR/bin"
@@ -37,6 +37,7 @@ setup_logo_service(){
       sed -i "s/DIR/$PLC_DIR/g" start.sh
       sudo systemctl start "$SERV_NAME.service"
     else
+      cp logo.service "$APP_DIR/"
       cd "$APP_DIR" || exit
       sed -i "s/{DIR}/$PLC_DIR/g" logo.service
       sudo cp logo.service "/etc/systemd/system/$SERV_NAME.service"
