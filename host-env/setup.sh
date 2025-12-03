@@ -19,10 +19,11 @@ setup_logo_service_T(){
 }
 
 setup_logo_service(){
+    PLC_DIR="$1"
+    SERV_NAME="$2"
+    APP_DIR="$HOME/$PLC_DIR"
     if [ "$SERVICE_ENABLE" -eq 0 ]; then
-      PLC_DIR="$1"
-      SERV_NAME="$2"
-      APP_DIR="$HOME/$PLC_DIR"
+      sudo systemctl stop "$SERV_NAME.service"
 
       mkdir -p "$APP_DIR"
       cp start.sh logo.service "$APP_DIR/"
@@ -34,9 +35,11 @@ setup_logo_service(){
       cd "$APP_DIR" || exit
       sudo chmod 775 start.sh
       sed -i "s/DIR/$PLC_DIR/g" start.sh
+      sudo systemctl start "$SERV_NAME.service"
+    else
+      cd "$APP_DIR" || exit
       sed -i "s/{DIR}/$PLC_DIR/g" logo.service
       sudo cp logo.service "/etc/systemd/system/$SERV_NAME.service"
-    else
       sudo systemctl daemon-reload
       sudo systemctl enable "$SERV_NAME.service"
       sudo systemctl restart "$SERV_NAME.service"
