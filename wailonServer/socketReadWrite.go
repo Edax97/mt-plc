@@ -12,10 +12,10 @@ func writePacket(packet string, con net.Conn) (string, error) {
 		return "", err
 	}
 
-	_ = con.SetReadDeadline(time.Now().Add(2000 * time.Millisecond))
+	/*_ = con.SetReadDeadline(time.Now().Add(2000 * time.Millisecond))
 	defer func() {
 		_ = con.SetReadDeadline(time.Time{})
-	}()
+	}()*/
 	reader := bufio.NewReader(con)
 	res, err := reader.ReadString('\n')
 	if err != nil {

@@ -24,27 +24,14 @@ func (c *WailonConnection) OpenSocket(ip, port string) error {
 
 	login := fmt.Sprintf("2.0;%s;NA;", c.Imei)
 	CRC := crcChecksum([]byte(login))
-	_, err = writePacket(fmt.Sprintf("#L#%s%s\r\n", login, CRC), c.conn)
+	res, err := writePacket(fmt.Sprintf("#L#%s%s\r\n", login, CRC), c.conn)
+	if !strings.Contains(res, "#AL#1") {
+		return fmt.Errorf("login unsuccessful, got: %s", res)
+	}
 	if err != nil {
 		return fmt.Errorf("on login, got: %w", err)
 	}
-
-	t := time.Now()
-	date := t.In(time.UTC).Format("020106")
-	second := t.In(time.UTC).Format("150405")
-
-	message := fmt.Sprintf("%s;%s;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s;", date, second, "hi:1:1")
-	CRC = crcChecksum([]byte(message))
-	packet := fmt.Sprintf("#D#%s%s\r\n", message, CRC)
-	res, err := writePacket(packet, c.conn)
-	if err != nil {
-		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, packet)
-	}
-
-	if !strings.Contains(res, "#AD#1") {
-		return fmt.Errorf("response unsuccessful, got: %s", res)
-	}
-	log.Printf("Sent %s, got %s", message, res)
+	
 	return nil
 }
 
@@ -67,10 +54,9 @@ func (c *WailonConnection) SendData(params string) error {
 
 	message := fmt.Sprintf("%s;%s;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s;", date, second, params)
 	CRC := crcChecksum([]byte(message))
-	packet := fmt.Sprintf("#D#%s%s\r\n", message, CRC)
-	res, err := writePacket(packet, c.conn)
+	res, err := writePacket(fmt.Sprintf("#D#%s%s\r\n", message, CRC), c.conn)
 	if err != nil {
-		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, packet)
+		return fmt.Errorf("when writing to wailon, got: %w \nsent:%s", err, message)
 	}
 
 	if !strings.Contains(res, "#AD#1") {

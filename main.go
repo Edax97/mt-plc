@@ -52,6 +52,7 @@ func main() {
 	//ENV
 	_ = godotenv.Load()
 	Imei := os.Getenv("IMEI")
+	isMock := os.Getenv("MOCK")
 	AddrModbus := os.Getenv("ADDR_MODBUS")
 	PortModbus := os.Getenv("PORT_MODBUS")
 	UrlWailon := os.Getenv("URL_WAILON")
@@ -80,7 +81,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	wailonCon := &wailonServer.WailonConnection{Imei: Imei}
+	var wailonCon IDataIO
+
+	if isMock == "1" {
+		wailonCon = wailonServer.NewMockServer()
+	} else {
+		wailonCon = &wailonServer.WailonConnection{Imei: Imei}
+	}
+
 	err = wailonCon.OpenSocket(UrlWailon, PortWailon)
 	if err != nil {
 		log.Fatalf("no se pudo conectar al servidor wailon: %v", err)

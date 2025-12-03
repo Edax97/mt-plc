@@ -9,6 +9,35 @@ import (
 type MockServer struct {
 }
 
+func (s *MockServer) OpenSocket(ip, port string) error {
+	log.Printf("serverd mocked at %s:%s", ip, port)
+	return nil
+}
+
+func (s *MockServer) SendPing() error {
+	log.Println("ping...")
+	return nil
+}
+
+func (s *MockServer) CloseSocket() {
+}
+
+func (s *MockServer) SendData(params string) error {
+	t := time.Now()
+	date := t.In(time.UTC).Format("020106")
+	second := t.In(time.UTC).Format("150405")
+
+	message := fmt.Sprintf("%s;%s;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;NA;;NA;%s;", date, second, params)
+	CRC := crcChecksum([]byte(message))
+	packet := fmt.Sprintf("#D#%s%s\r\n", message, CRC)
+	fmt.Printf("Sending... %s", packet)
+	panic("implement me")
+}
+
+func (s *MockServer) ReadCommand() (string, string, error) {
+	return "Timeout", "", nil
+}
+
 func NewMockServer() *MockServer {
 	return &MockServer{}
 }
