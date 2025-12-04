@@ -6,6 +6,7 @@ while getopts "s:" opt; do
   case $opt in
     s)
       SERVICE_ENABLE=1
+      echo "Enabling services"
       ;;
     \?) # Handle invalid options
       echo "Building app"

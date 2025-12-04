@@ -12,17 +12,15 @@ async def run_server():
     # --- 1. Define the LOGO! 8 Memory Map ---
     # Inputs (I1-I24) -> Discrete Inputs 0-23
     # d0
-    inputs_block = ModbusSequentialDataBlock(1024, [0] + [1]*3 + [0]*3 + [1])
+    inputs_block = ModbusSequentialDataBlock(1, [0] + [1]*2 + [0])
 
     # Outputs (Q1-Q20) & Flags (M1-M64) -> Coils
     # Start at 8192 (Q1). Cover up to 8319 (M64).
-    # c1973
-    coils_block = ModbusSequentialDataBlock(1064, [0]*8)
+    coils_block = ModbusSequentialDataBlock(8193, [0]*128)
 
     # Analog Inputs (AI1-AI8) -> Input Registers 0-7
     # i@0
     analog_inputs_block = ModbusSequentialDataBlock(1032, [500, 850, 350, 0, 0, 0, 0, 200])
-
     vm_block = ModbusSequentialDataBlock(0, [112] + [0]*424 + [250])
 
     # --- 2. Create the Slave Context ---

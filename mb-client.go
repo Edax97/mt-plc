@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/goburrow/modbus"
@@ -8,20 +9,22 @@ import (
 
 type modbusConn struct {
 	handler *modbus.TCPClientHandler
-	client  modbus.Client
 }
 
 func NewModbusConn(address string, timeout time.Duration) (IModbusIO, error) {
 	h := modbus.NewTCPClientHandler(address)
 	h.Timeout = timeout
 	h.SlaveId = 1 // LOGO! por defecto usa ID 1 cuando está detrás de TCP gateway
-	if err := h.Connect(); err != nil {
-		return nil, err
-	}
-	return &modbusConn{handler: h, client: modbus.NewClient(h)}, nil
+	return &modbusConn{handler: h}, nil
 }
 
-// Write unit tests for methods in this file
+func (c *modbusConn) StartConnection() (modbus.Client, error) {
+	if err := c.handler.Connect(); err != nil {
+		return nil, err
+	}
+	return modbus.NewClient(c.handler), nil
+}
+
 func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	inputBool := make([]bool, len(addressList))
 	if len(addressList) == 0 {
@@ -30,7 +33,15 @@ func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	iStart := extremeValue(addressList, min16)
 	iEnd := extremeValue(addressList, max16)
 	iQty := iEnd - iStart + 1
-	iRegs, err := c.client.ReadDiscreteInputs(iStart, iQty)
+
+	client, err := c.StartConnection()
+	if err != nil {
+		return []bool{}, fmt.Errorf("when connecting, %w", err)
+	}
+	defer func() {
+		_ = c.Close()
+	}()
+	iRegs, err := client.ReadDiscreteInputs(iStart, iQty)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +63,14 @@ func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 	qEnd := extremeValue(addressList, max16)
 	qQty := qEnd - qStart + 1
 
-	qRegs, err := c.client.ReadCoils(qStart, qQty)
+	client, err := c.StartConnection()
+	if err != nil {
+		return []bool{}, fmt.Errorf("when connecting, %w", err)
+	}
+	defer func() {
+		_ = c.Close()
+	}()
+	qRegs, err := client.ReadCoils(qStart, qQty)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +91,14 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	aEnd := extremeValue(addressList, max16)
 	aQty := aEnd - aStart + 1
 
-	bytesArr, err := c.client.ReadInputRegisters(aStart-1, aQty)
+	client, err := c.StartConnection()
+	if err != nil {
+		return []float32{}, fmt.Errorf("when connecting, %w", err)
+	}
+	defer func() {
+		_ = c.Close()
+	}()
+	bytesArr, err := client.ReadInputRegisters(aStart-1, aQty)
 
 	if err != nil {
 		return nil, err
@@ -91,7 +116,14 @@ func (c *modbusConn) WriteCoil(address uint16, value bool) error {
 	} else {
 		v = 0x0000
 	}
-	_, err := c.client.WriteSingleCoil(address, v)
+	client, err := c.StartConnection()
+	if err != nil {
+		return fmt.Errorf("when connecting, %w", err)
+	}
+	defer func() {
+		_ = c.Close()
+	}()
+	_, err = client.WriteSingleCoil(address, v)
 	return err
 }
 
