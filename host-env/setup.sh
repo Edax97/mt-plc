@@ -36,6 +36,7 @@ setup_logo_service(){
       cd "$APP_DIR" || exit
       sudo chmod 775 start.sh
       sed -i "s/DIR/$PLC_DIR/g" start.sh
+      sudo systemctl enable "$SERV_NAME.service"
       sudo systemctl start "$SERV_NAME.service"
     else
       cp logo.service "$APP_DIR/"

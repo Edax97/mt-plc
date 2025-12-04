@@ -31,7 +31,7 @@ func (c *WailonConnection) OpenSocket(ip, port string) error {
 	if err != nil {
 		return fmt.Errorf("on login, got: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -92,10 +92,9 @@ func (c *WailonConnection) SendPing() error {
 	defer c.mu.Unlock()
 	login := fmt.Sprintf("2.0;%s;NA;", c.Imei)
 	CRC := crcChecksum([]byte(login))
-	res, err := writePacket(fmt.Sprintf("#L#%s%s\r\n", login, CRC), c.conn)
-	if err != nil {
-		return fmt.Errorf("when writing to wailon, got: %w", err)
+	if res, err := writePacket(fmt.Sprintf("#L#%s%s\r\n", login, CRC), c.conn); err != nil {
+		return fmt.Errorf("writing to wailon, res: %s, got: %w", res, err)
 	}
-	log.Printf("Ping, got %s", res)
+	//log.Printf("Ping, got %s", res)
 	return nil
 }
