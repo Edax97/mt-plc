@@ -1,6 +1,8 @@
 #!/bin/bash
 export LOGO_DIRS="DESAGUE
-AGUA"
+AGUA
+ELECTROGENO"
 export LOGO_SERVICES="desague
-agua"
+agua
+electrogeno"
 
