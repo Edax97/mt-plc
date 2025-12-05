@@ -20,7 +20,7 @@ async def run_server():
 
     # Analog Inputs (AI1-AI8) -> Input Registers 0-7
     # i@0
-    analog_inputs_block = ModbusSequentialDataBlock(1032, [500, 850, 350, 0, 0, 0, 0, 200])
+    analog_inputs_block = ModbusSequentialDataBlock(0, [500, 850, 333, 444, 0, 0, 0, 200])
     vm_block = ModbusSequentialDataBlock(0, [112] + [0]*424 + [250])
 
     # --- 2. Create the Slave Context ---
