@@ -1,5 +1,6 @@
 #!/bin/bash
 
+SRC_DIR="/home/pi/mt-plc"
 SERVICE_ENABLE=0
 
 while getopts "s:" opt; do
@@ -20,15 +21,15 @@ setup_logo_service_T(){
 }
 
 setup_logo_service(){
+    cd "$SRC_DIR" || exit
     PLC_DIR="$1"
     SERV_NAME="$2"
     APP_DIR="$HOME/$PLC_DIR"
     if [ "$SERVICE_ENABLE" -eq 0 ]; then
-      sudo systemctl stop "$SERV_NAME.service"
+      sudo systemctl stop "$SERV_NAME.service" || echo "service does not exist"
 
       mkdir -p "$APP_DIR"
-      cp start.sh "$APP_DIR/"
-      cd ".."
+      cp host-env/start.sh "$APP_DIR/"
       #go build -o "$APP_DIR/bin" .
       cp bin-arm "$APP_DIR/bin"
       cp ".env.$SERV_NAME" "$APP_DIR/.env"
@@ -36,10 +37,10 @@ setup_logo_service(){
       cd "$APP_DIR" || exit
       sudo chmod 775 start.sh
       sed -i "s/DIR/$PLC_DIR/g" start.sh
-      sudo systemctl enable "$SERV_NAME.service"
-      sudo systemctl start "$SERV_NAME.service"
+      sudo systemctl enable "$SERV_NAME.service" || echo "service does not exist"
+      sudo systemctl start "$SERV_NAME.service" || echo "service does not exist"
     else
-      cp logo.service "$APP_DIR/"
+      cp host-env/logo.service "$APP_DIR/"
       cd "$APP_DIR" || exit
       sed -i "s/{DIR}/$PLC_DIR/g" logo.service
       sudo cp logo.service "/etc/systemd/system/$SERV_NAME.service"
