@@ -25,7 +25,7 @@ func writePacket(packet string, con net.Conn) (string, error) {
 }
 
 func readPacket(con net.Conn) (string, error) {
-	_ = con.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+	_ = con.SetReadDeadline(time.Now().Add(800 * time.Millisecond))
 	defer func() {
 		_ = con.SetReadDeadline(time.Time{})
 	}()

@@ -98,7 +98,7 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	defer func() {
 		_ = c.Close()
 	}()
-	bytesArr, err := client.ReadInputRegisters(aStart-1, aQty)
+	bytesArr, err := client.ReadInputRegisters(aStart, aQty)
 
 	if err != nil {
 		return nil, err

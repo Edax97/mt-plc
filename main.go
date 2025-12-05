@@ -65,11 +65,14 @@ func main() {
 		log.Fatal("Malformed REGISTER_READ(WRITE)")
 	}
 
-	period := flag.Int("period", 5, "Periodo de polling en s")
-	uploadPeriod := flag.Int("uploadPeriod", 10, "Periodo para upload en min")
+	timeoutMs, err := strconv.Atoi(os.Getenv("TIMEOUT_MODBUS"))
+	if err != nil {
+		timeoutMs = 2500
+	}
+	period := flag.Int("period", 10, "Periodo de polling en s")
+	uploadMin := flag.Int("uploadMin", 10, "Periodo para upload en min")
 	flag.Parse()
 
-	timeoutMs := 2000
 	plcAddr := fmt.Sprintf("%s:%s", AddrModbus, PortModbus)
 	plcConn, err := NewModbusConn(plcAddr, time.Duration(timeoutMs)*time.Millisecond)
 	if err != nil {
@@ -100,5 +103,5 @@ func main() {
 	log.Printf("Conectado a %s", UrlWailon)
 	pollLoop(ctx, plcConn, wailonCon, addrRead, addrWrite, addrAnalog,
 		time.Duration(*period)*time.Second,
-		time.Duration(*uploadPeriod)*time.Minute)
+		time.Duration(*uploadMin)*time.Minute)
 }

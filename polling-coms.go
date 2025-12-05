@@ -26,18 +26,31 @@ type IDataIO interface {
 	ReadCommand() (string, string, error)
 }
 
+const (
+	InitModbusFails = 6
+	InitWailonFails = 5
+)
+
+type comFailures int
+
+func comFail(f *comFailures) {
+	if f == nil {
+		return
+	}
+	*f = *f - 1
+	if *f <= 0 {
+		os.Exit(1)
+	}
+}
+
 func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
 	ticker := time.NewTicker(pollPeriod)
-	pingErrors := 10
 	defer ticker.Stop()
 
+	wFails := comFailures(InitWailonFails)
+	plcFails := comFailures(InitModbusFails)
+
 	uploadedAt := time.Now()
-
-	defer func() {
-		_ = plcConn.Close()
-		wConn.CloseSocket()
-	}()
-
 	readMemory := newReading(len(addrRead.logo), len(addrAnalog.logo))
 
 	for {
@@ -62,30 +75,33 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 			inputVals, err := plcConn.ReadInputs(inputAddrs)
 			if err != nil {
 				log.Printf("Error reading inputs: %v", err)
+				comFail(&plcFails)
 				continue
 			}
 			coilVals, err := plcConn.ReadCoils(coilAddrs)
 			if err != nil {
 				log.Printf("Error reading coils: %v", err)
+				comFail(&plcFails)
 				continue
 			}
 			anagVals, err := plcConn.ReadAnalog(addrAnalog.addr)
 			if err != nil {
 				log.Printf("Error reading analog inputs: %v", err)
+				log.Print(addrAnalog.addr)
+				comFail(&plcFails)
 				continue
 			}
+			plcFails = InitModbusFails
 			if !readMemory.ChangeInReading(append(inputVals, coilVals...)) &&
 				!readMemory.ChangeInFloat(anagVals) &&
 				!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
 				//log.Print("No change in registers")
 				if err := wConn.SendPing(); err != nil {
 					log.Printf("Error sending ping: %v", err)
-					pingErrors = pingErrors - 1
-					if pingErrors <= 0 {
-						os.Exit(1)
-					}
+					comFail(&wFails)
+					continue
 				}
-
+				wFails = InitWailonFails
 				continue
 			}
 			uploadedAt = time.Now()
@@ -104,9 +120,16 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 					dataStr = fmt.Sprintf("%s:1:%d,%s", name, value, dataStr)
 				}
 			}
-			for i, val := range anagVals {
-				name := addrAnalog.name[i]
-				dataStr = fmt.Sprintf("%s:2:%.2f,%s", name, val, dataStr)
+			bigWord := uint32(0)
+			for j, val := range anagVals {
+				name := addrAnalog.name[j]
+				if addrAnalog.logo[j] == "0" {
+					v := bigWord<<16 | uint32(val)
+					bigWord = uint32(0)
+					dataStr = fmt.Sprintf("%s:2:%.2f,%s", name, float64(v), dataStr)
+				} else {
+					bigWord = uint32(val)
+				}
 			}
 			err = wConn.SendData(dataStr)
 			if err != nil {
@@ -161,7 +184,7 @@ type Reading struct {
 
 func newReading(s, sf int) *Reading {
 	l := make([]bool, s)
-	f := make([]float32, s)
+	f := make([]float32, sf)
 	return &Reading{l, f, false}
 }
 

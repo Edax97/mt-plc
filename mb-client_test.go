@@ -8,38 +8,42 @@ import (
 
 type register struct {
 	address uint16
-	value   bool
+	value   int
 }
 
 func getAddressSpace() map[string]register {
 	return map[string]register{
 		"I1": {
 			0,
-			false,
+			0,
 		},
 		"I2": {
 			1,
-			true,
+			1,
 		},
 		"I3": {
 			2,
-			true,
+			1,
 		},
 		"I4": {
 			3,
-			false,
+			0,
 		},
 		"Q1": {
 			8192,
-			false,
+			0,
 		},
 		"Q2": {
 			8193,
-			false,
+			0,
 		},
 		"Q3": {
 			8194,
-			false,
+			0,
+		},
+		"A10": {
+			0,
+			500,
 		},
 	}
 }
@@ -100,7 +104,7 @@ func TestModbusConn_ReadDigital(t *testing.T) {
 	type testCase struct {
 		typ  rune
 		ad   []uint16
-		want []bool
+		want []int
 	}
 
 	cases := map[string]testCase{
@@ -108,14 +112,14 @@ func TestModbusConn_ReadDigital(t *testing.T) {
 			[]uint16{
 				addresses["I1"].address,
 			},
-			[]bool{
+			[]int{
 				addresses["I1"].value,
 			}},
 		"contiguous inputs": {'I',
 			[]uint16{
 				addresses["I2"].address, addresses["I3"].address,
 			},
-			[]bool{
+			[]int{
 				addresses["I2"].value, addresses["I3"].value,
 			},
 		},
@@ -123,21 +127,21 @@ func TestModbusConn_ReadDigital(t *testing.T) {
 			[]uint16{
 				addresses["I1"].address, addresses["I4"].address,
 			},
-			[]bool{
+			[]int{
 				addresses["I1"].value, addresses["I4"].value,
 			},
 		},
 		"single output": {'Q',
 			[]uint16{
 				addresses["Q1"].address,
-			}, []bool{
+			}, []int{
 				addresses["Q1"].value,
 			}},
 		"contiguous outputs": {'Q',
 			[]uint16{
 				addresses["Q2"].address, addresses["Q3"].address,
 			},
-			[]bool{
+			[]int{
 				addresses["Q2"].value, addresses["Q3"].value,
 			},
 		},
@@ -145,7 +149,7 @@ func TestModbusConn_ReadDigital(t *testing.T) {
 			[]uint16{
 				addresses["Q1"].address, addresses["Q3"].address,
 			},
-			[]bool{
+			[]int{
 				addresses["Q1"].value, addresses["Q3"].value,
 			},
 		},
@@ -168,7 +172,7 @@ func TestModbusConn_ReadDigital(t *testing.T) {
 
 			}
 			for j, w := range tc.want {
-				if w != got[j] {
+				if (w == 1) != got[j] {
 					t.Errorf("error readDigital\nwant:%v\ngot:%v", tc.want, got)
 					return
 				}
