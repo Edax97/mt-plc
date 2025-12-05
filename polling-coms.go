@@ -221,7 +221,7 @@ func (r *Reading) ChangeInFloat(new []float32) bool {
 			return true
 		}
 		diff := (f - r.lastFloats[i]) / r.lastFloats[i]
-		if math.Abs(float64(diff)) > 0.03 {
+		if math.Abs(float64(diff)) > 0.1 {
 			return true
 		}
 	}
