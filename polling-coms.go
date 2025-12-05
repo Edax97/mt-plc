@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"strings"
 	"time"
 )
@@ -27,6 +28,7 @@ type IDataIO interface {
 
 func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
 	ticker := time.NewTicker(pollPeriod)
+	pingErrors := 10
 	defer ticker.Stop()
 
 	uploadedAt := time.Now()
@@ -78,7 +80,12 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 				//log.Print("No change in registers")
 				if err := wConn.SendPing(); err != nil {
 					log.Printf("Error sending ping: %v", err)
+					pingErrors = pingErrors - 1
+					if pingErrors <= 0 {
+						os.Exit(1)
+					}
 				}
+
 				continue
 			}
 			uploadedAt = time.Now()
@@ -160,7 +167,7 @@ func newReading(s, sf int) *Reading {
 
 func (r *Reading) ChangeInReading(new []bool) bool {
 	defer func() {
-		r.lastValues = new
+		copy(r.lastValues, new)
 		r.sent = true
 	}()
 	if !r.sent {
@@ -176,7 +183,7 @@ func (r *Reading) ChangeInReading(new []bool) bool {
 
 func (r *Reading) ChangeInFloat(new []float32) bool {
 	defer func() {
-		r.lastFloats = new
+		copy(r.lastFloats, new)
 		r.sent = true
 	}()
 	if !r.sent {
