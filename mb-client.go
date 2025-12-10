@@ -84,6 +84,52 @@ func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 
 func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	analogs := make([]float32, len(addressList))
+	bytesArr := make([]byte, 0, 2*len(addressList))
+
+	if len(addressList) == 0 {
+		return analogs, nil
+	}
+
+	client, err := c.StartConnection()
+	if err != nil {
+		return []float32{}, fmt.Errorf("when connecting, %w", err)
+	}
+	defer func() {
+		_ = c.Close()
+	}()
+
+	aData := struct {
+		aStart uint16
+		aQty   uint16
+	}{addressList[0], 1}
+	for j := 1; j < len(addressList)+1; j++ {
+		var aj uint16
+		if j < len(addressList) {
+			aj = addressList[j]
+		}
+		if aj > aData.aStart+aData.aQty || j == len(addressList) {
+			b, err := client.ReadInputRegisters(aData.aStart, aData.aQty)
+			if err != nil {
+				return nil, err
+			}
+			bytesArr = append(bytesArr, b...)
+			aData.aStart = aj
+			aData.aQty = 1
+		} else {
+			aData.aQty = aData.aQty + 1
+		}
+	}
+
+	for i := range addressList {
+		analogs[i] = getFloat(bytesArr, uint16(i))
+	}
+
+	return analogs, nil
+}
+
+/*
+func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
+	analogs := make([]float32, len(addressList))
 	if len(addressList) == 0 {
 		return analogs, nil
 	}
@@ -107,7 +153,7 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 		analogs[j] = getFloat(bytesArr, add-aStart)
 	}
 	return analogs, nil
-}
+}*/
 
 func (c *modbusConn) WriteCoil(address uint16, value bool) error {
 	var v uint16
