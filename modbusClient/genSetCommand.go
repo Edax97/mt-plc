@@ -22,6 +22,8 @@ func GenSetON(c *ModbusConn) error {
 func GenSetOFF(c *ModbusConn) error {
 	returned, err := c.WriteCommand(CodeAddress, StartStopCode, ArgumentAddress, ArgumentStop)
 	if err == nil && returned != 0x000002FE {
+
+		fmt.Printf("Returned: %d\n", returned)
 		return fmt.Errorf("returned value not expected, %d", returned)
 	}
 	return err

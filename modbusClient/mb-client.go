@@ -2,6 +2,7 @@ package modbusClient
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/goburrow/modbus"
@@ -197,6 +198,7 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	if err != nil {
 		return 0, fmt.Errorf("reading return value: %w", err)
 	}
+	log.Println("Read registers", b)
 	reg1 := getFloat(b, 0)
 	reg2 := getFloat(b, 1)
 	return uint32(reg1)<<16 | uint32(reg2), nil
