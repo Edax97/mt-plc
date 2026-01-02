@@ -8,15 +8,9 @@ import (
 	"os"
 	"strings"
 	"time"
-)
 
-type IModbusIO interface {
-	ReadInputs(address []uint16) ([]bool, error)
-	ReadCoils(address []uint16) ([]bool, error)
-	ReadAnalog(address []uint16) ([]float32, error)
-	WriteCoil(address uint16, value bool) error
-	Close() error
-}
+	"github.com/joho/godotenv"
+)
 
 type IDataIO interface {
 	OpenSocket(ip, port string) error
@@ -43,7 +37,8 @@ func comFail(f *comFailures) {
 	}
 }
 
-func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
+func pollLoop(ctx context.Context, plcConn *ModbusConn, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
+	_ = godotenv.Load()
 	ticker := time.NewTicker(pollPeriod)
 	defer ticker.Stop()
 
@@ -170,6 +165,22 @@ func pollLoop(ctx context.Context, plcConn IModbusIO, wConn IDataIO, addrRead *A
 				}
 				if notFound {
 					log.Printf("not found variable: %s", varName)
+				}
+			case "GS":
+				en := os.Getenv("GENSET_COMMANDS")
+				if en != "true" {
+					continue
+				}
+				if message == "START" {
+					if err := GenSetON(plcConn); err != nil {
+						log.Printf("Error prendiendo gen %v", err)
+						continue
+					}
+				} else if message == "STOP" {
+					if err := GenSetOFF(plcConn); err != nil {
+						log.Printf("Error apagando gen %v", err)
+						continue
+					}
 				}
 			}
 		}

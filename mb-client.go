@@ -7,25 +7,25 @@ import (
 	"github.com/goburrow/modbus"
 )
 
-type modbusConn struct {
+type ModbusConn struct {
 	handler *modbus.TCPClientHandler
 }
 
-func NewModbusConn(address string, timeout time.Duration) (IModbusIO, error) {
+func NewModbusConn(address string, timeout time.Duration) (*ModbusConn, error) {
 	h := modbus.NewTCPClientHandler(address)
 	h.Timeout = timeout
 	h.SlaveId = 1 // LOGO! por defecto usa ID 1 cuando está detrás de TCP gateway
-	return &modbusConn{handler: h}, nil
+	return &ModbusConn{handler: h}, nil
 }
 
-func (c *modbusConn) StartConnection() (modbus.Client, error) {
+func (c *ModbusConn) StartConnection() (modbus.Client, error) {
 	if err := c.handler.Connect(); err != nil {
 		return nil, err
 	}
 	return modbus.NewClient(c.handler), nil
 }
 
-func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
+func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	inputBool := make([]bool, len(addressList))
 	if len(addressList) == 0 {
 		return inputBool, nil
@@ -53,7 +53,7 @@ func (c *modbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	return inputBool, nil
 }
 
-func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
+func (c *ModbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 	coilsBool := make([]bool, len(addressList))
 	if len(addressList) == 0 {
 		return coilsBool, nil
@@ -82,7 +82,7 @@ func (c *modbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 	return coilsBool, nil
 }
 
-func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
+func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	analogs := make([]float32, len(addressList))
 	bytesArr := make([]byte, 0, 2*len(addressList))
 
@@ -128,7 +128,7 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 }
 
 /*
-func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
+func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	analogs := make([]float32, len(addressList))
 	if len(addressList) == 0 {
 		return analogs, nil
@@ -155,7 +155,7 @@ func (c *modbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 	return analogs, nil
 }*/
 
-func (c *modbusConn) WriteCoil(address uint16, value bool) error {
+func (c *ModbusConn) WriteCoil(address uint16, value bool) error {
 	var v uint16
 	if value {
 		v = 0xFF00
@@ -173,7 +173,36 @@ func (c *modbusConn) WriteCoil(address uint16, value bool) error {
 	return err
 }
 
-func (c *modbusConn) Close() error {
+func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress uint16, argValue uint32) (uint32, error) {
+	client, err := c.StartConnection()
+	defer func() {
+		_ = c.Close()
+	}()
+	if err != nil {
+		return 0, fmt.Errorf("when connecting, %w", err)
+	}
+	// 0x01FE0000 -> byte
+	argBytes := toBytes(uint64(argValue), 4)
+	_, err = client.WriteMultipleRegisters(argAddress, 2, argBytes)
+	if err != nil {
+		return 0, fmt.Errorf("writing argument, %w", err)
+	}
+	// 0x0001
+	_, err = client.WriteSingleRegister(cmdAddress, cmdValue)
+	if err != nil {
+		return 0, fmt.Errorf("writing command: %w", err)
+	}
+
+	b, err := client.ReadHoldingRegisters(argAddress, 2)
+	if err != nil {
+		return 0, fmt.Errorf("reading return value: %w", err)
+	}
+	reg1 := getFloat(b, 0)
+	reg2 := getFloat(b, 1)
+	return uint32(reg1)<<16 | uint32(reg2), nil
+}
+
+func (c *ModbusConn) Close() error {
 	if c.handler != nil {
 		return c.handler.Close()
 	}
@@ -215,4 +244,15 @@ func getFloat(data []byte, addrIndex uint16) float32 {
 	//floatScale := float32(intScale-1<<8) * 0.1
 	floatScale := float32(intScale)
 	return floatScale
+}
+
+func toBytes(value uint64, n int) []byte {
+	bytes := make([]byte, n)
+	rest := value
+	for i := 0; i < n; i++ {
+		b := rest >> (8 * (n - 1 - i))
+		rest = rest - b
+		bytes[i] = b
+	}
+	return bytes
 }
