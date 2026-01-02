@@ -1,6 +1,7 @@
 package modbusClient
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
 	"time"
@@ -183,7 +184,8 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 		return 0, fmt.Errorf("when connecting, %w", err)
 	}
 	// 0x01FE0000 -> byte
-	argBytes := toBytes(uint64(argValue), 4)
+	argBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(argBytes, argValue)
 	log.Printf("Bytes sent as arg: %v", argBytes)
 	_, err = client.WriteMultipleRegisters(argAddress, 2, argBytes)
 	if err != nil {
@@ -252,10 +254,11 @@ func getFloat(data []byte, addrIndex uint16) float32 {
 func toBytes(value uint64, n int) []byte {
 	bytes := make([]byte, n)
 	rest := value
-	for i := 0; i < n; i++ {
-		b := rest >> (8 * (n - 1 - i))
-		rest = rest - b
+	for i := n - 1; i >= 0; i-- {
+		b := rest % (1 << 8)
 		bytes[i] = byte(b)
+
+		rest = (rest - b) >> 8
 	}
 	return bytes
 }
