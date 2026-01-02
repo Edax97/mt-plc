@@ -3,7 +3,6 @@ package modbusClient
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/goburrow/modbus"
@@ -186,7 +185,6 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	// 0x01FE0000 -> byte
 	argBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(argBytes, argValue)
-	log.Printf("Bytes sent as arg: %v", argBytes)
 	_, err = client.WriteMultipleRegisters(argAddress, 2, argBytes)
 	if err != nil {
 		return 0, fmt.Errorf("writing argument, %w", err)
@@ -201,7 +199,6 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	if err != nil {
 		return 0, fmt.Errorf("reading return value: %w", err)
 	}
-	log.Println("Read registers", b)
 	reg1 := getFloat(b, 0)
 	reg2 := getFloat(b, 1)
 	return uint32(reg1)<<16 | uint32(reg2), nil
