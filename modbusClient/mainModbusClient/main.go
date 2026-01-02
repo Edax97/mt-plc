@@ -12,7 +12,7 @@ const AddrModbus = "192.168.8.52"
 const PortModbus = "502"
 
 func main() {
-	plcConn, err := modbusClient.NewModbusConn(AddrModbus+":"+PortModbus, 2000*time.Millisecond)
+	plcConn, err := modbusClient.NewModbusConn(AddrModbus+":"+PortModbus, 4000*time.Millisecond)
 
 	if err != nil {
 		panic(err)
@@ -35,6 +35,13 @@ func main() {
 	} else if *cmd == "EN" {
 
 		if err := plcConn.WriteCoil(4700, true); err != nil {
+			val, _ := plcConn.ReadCoils([]uint16{4700})
+			fmt.Printf("values from 4700: %v \n", val)
+			panic(err)
+		}
+	} else if *cmd == "DI" {
+
+		if err := plcConn.WriteCoil(4700, false); err != nil {
 			val, _ := plcConn.ReadCoils([]uint16{4700})
 			fmt.Printf("values from 4700: %v \n", val)
 			panic(err)
