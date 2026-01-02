@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"mt-plc-control/modbusClient"
 	"time"
@@ -29,6 +30,13 @@ func main() {
 		}
 	} else if *cmd == "OFF" {
 		if err := modbusClient.GenSetOFF(plcConn); err != nil {
+			panic(err)
+		}
+	} else if *cmd == "EN" {
+
+		if err := plcConn.WriteCoil(4700, true); err != nil {
+			val, err := plcConn.ReadCoils([]uint16{4700})
+			fmt.Printf("values from 4700: %v \n", val)
 			panic(err)
 		}
 	}
