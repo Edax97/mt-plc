@@ -35,7 +35,7 @@ func main() {
 	} else if *cmd == "EN" {
 
 		if err := plcConn.WriteCoil(4700, true); err != nil {
-			val, err := plcConn.ReadCoils([]uint16{4700})
+			val, _ := plcConn.ReadCoils([]uint16{4700})
 			fmt.Printf("values from 4700: %v \n", val)
 			panic(err)
 		}

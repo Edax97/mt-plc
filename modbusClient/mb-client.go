@@ -184,6 +184,7 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	}
 	// 0x01FE0000 -> byte
 	argBytes := toBytes(uint64(argValue), 4)
+	log.Printf("Bytes sent as arg: %v", argBytes)
 	_, err = client.WriteMultipleRegisters(argAddress, 2, argBytes)
 	if err != nil {
 		return 0, fmt.Errorf("writing argument, %w", err)
