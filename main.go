@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"mt-plc-control/modbusClient"
 	"mt-plc-control/wailonServer"
 	"os"
 	"strconv"
@@ -74,7 +75,7 @@ func main() {
 	flag.Parse()
 
 	plcAddr := fmt.Sprintf("%s:%s", AddrModbus, PortModbus)
-	plcConn, err := NewModbusConn(plcAddr, time.Duration(timeoutMs)*time.Millisecond)
+	plcConn, err := modbusClient.NewModbusConn(plcAddr, time.Duration(timeoutMs)*time.Millisecond)
 	if err != nil {
 		log.Fatalf("no se pudo conectar al PLC en %s: %v", plcAddr, err)
 	}

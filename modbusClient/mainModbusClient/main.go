@@ -3,18 +3,15 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
+	"mt-plc-control/modbusClient"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
-func main() {
-	_ = godotenv.Load()
-	AddrModbus := os.Getenv("ADDR_MODBUS")
-	PortModbus := os.Getenv("PORT_MODBUS")
+const AddrModbus = "192.168.8.52"
+const PortModbus = "502"
 
-	plcConn, err := NewModbusConn(AddrModbus+":"+PortModbus, 2000*time.Millisecond)
+func main() {
+	plcConn, err := modbusClient.NewModbusConn(AddrModbus+":"+PortModbus, 2000*time.Millisecond)
 
 	if err != nil {
 		panic(err)
@@ -27,11 +24,11 @@ func main() {
 	}
 
 	if *cmd == "ON" {
-		if err := GenSetON(plcConn); err != nil {
+		if err := modbusClient.GenSetON(plcConn); err != nil {
 			panic(err)
 		}
 	} else if *cmd == "OFF" {
-		if err := GenSetOFF(plcConn); err != nil {
+		if err := modbusClient.GenSetOFF(plcConn); err != nil {
 			panic(err)
 		}
 	}

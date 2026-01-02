@@ -1,4 +1,4 @@
-package main
+package modbusClient
 
 import (
 	"fmt"
@@ -252,7 +252,7 @@ func toBytes(value uint64, n int) []byte {
 	for i := 0; i < n; i++ {
 		b := rest >> (8 * (n - 1 - i))
 		rest = rest - b
-		bytes[i] = b
+		bytes[i] = byte(b)
 	}
 	return bytes
 }

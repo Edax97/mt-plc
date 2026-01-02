@@ -1,4 +1,4 @@
-package main
+package modbusClient
 
 import (
 	"os/exec"

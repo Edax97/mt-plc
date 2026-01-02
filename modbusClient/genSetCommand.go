@@ -1,6 +1,8 @@
-package main
+package modbusClient
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const CodeAddress = 4209
 const ArgumentAddress = 4207

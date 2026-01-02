@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"mt-plc-control/modbusClient"
 	"os"
 	"strings"
 	"time"
@@ -37,7 +38,7 @@ func comFail(f *comFailures) {
 	}
 }
 
-func pollLoop(ctx context.Context, plcConn *ModbusConn, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
+func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IDataIO, addrRead *AddrMap, addrWrite *AddrMap, addrAnalog *AddrMap, pollPeriod time.Duration, uploadPeriod time.Duration) {
 	_ = godotenv.Load()
 	ticker := time.NewTicker(pollPeriod)
 	defer ticker.Stop()
@@ -172,12 +173,12 @@ func pollLoop(ctx context.Context, plcConn *ModbusConn, wConn IDataIO, addrRead 
 					continue
 				}
 				if message == "START" {
-					if err := GenSetON(plcConn); err != nil {
+					if err := modbusClient.GenSetON(plcConn); err != nil {
 						log.Printf("Error prendiendo gen %v", err)
 						continue
 					}
 				} else if message == "STOP" {
-					if err := GenSetOFF(plcConn); err != nil {
+					if err := modbusClient.GenSetOFF(plcConn); err != nil {
 						log.Printf("Error apagando gen %v", err)
 						continue
 					}
