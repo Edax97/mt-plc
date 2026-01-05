@@ -35,7 +35,18 @@ func (s *MockServer) SendData(params string) error {
 }
 
 func (s *MockServer) ReadCommand() (string, string, error) {
-	return "Timeout", "", nil
+	time.Sleep(time.Second * 5)
+
+	fmt.Println("Hi")
+
+	t := time.Now()
+
+	if t.Second()%7 > 5 {
+		return "W", "W_Q1=1", nil
+	} else {
+		return "Timeout", "", nil
+	}
+
 }
 
 func NewMockServer() *MockServer {

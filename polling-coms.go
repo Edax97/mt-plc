@@ -46,8 +46,25 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 	wFails := comFailures(InitWailonFails)
 	plcFails := comFailures(InitModbusFails)
 
+	sendNow := false
 	uploadedAt := time.Now()
 	readMemory := newReading(len(addrRead.logo), len(addrAnalog.logo))
+
+	cmdChan := make(chan string)
+	go func() {
+		for {
+			cmd, message, err := wConn.ReadCommand()
+			if err != nil {
+				log.Printf("Error: %v", err)
+				continue
+			}
+			if strings.ToUpper(cmd) == "TIMEOUT" {
+				continue
+			}
+			cmdChan <- fmt.Sprintf("%s|%s", cmd, message)
+		}
+
+	}()
 
 	for {
 		select {
@@ -88,10 +105,10 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 				continue
 			}
 			plcFails = InitModbusFails
-			if !readMemory.ChangeInReading(append(inputVals, coilVals...)) &&
-				!readMemory.ChangeInFloat(anagVals) &&
+			if !sendNow && !readMemory.HaveChanged(coilVals, anagVals) &&
 				!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
 				//log.Print("No change in registers")
+				sendNow = false
 				if err := wConn.SendPing(); err != nil {
 					log.Printf("Error sending ping: %v", err)
 					comFail(&wFails)
@@ -101,6 +118,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 				continue
 			}
 			uploadedAt = time.Now()
+			readMemory.UpdateLastValues(coilVals, anagVals)
 
 			regReadings := append(inputVals, coilVals...)
 			dataStr := ""
@@ -131,14 +149,13 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 			if err != nil {
 				log.Printf("Error: %v", err)
 			}
-		default:
-			cmd, message, err := wConn.ReadCommand()
-			if err != nil {
-				log.Printf("Error: %v", err)
-				continue
-			}
 
-			switch strings.ToUpper(cmd) {
+		case cmd := <-cmdChan:
+			cmdParts := strings.Split(cmd, "|")
+			code, message := cmdParts[0], cmdParts[1]
+
+			sendNow = true
+			switch strings.ToUpper(code) {
 			case "TIMEOUT":
 				continue
 			case "W":
@@ -200,42 +217,34 @@ func newReading(s, sf int) *Reading {
 	return &Reading{l, f, false}
 }
 
-func (r *Reading) ChangeInReading(new []bool) bool {
-	defer func() {
-		copy(r.lastValues, new)
-		r.sent = true
-	}()
+func (r *Reading) HaveChanged(b []bool, f []float32) bool {
+
 	if !r.sent {
 		return true
 	}
-	for i := 0; i < len(new); i++ {
-		if new[i] != r.lastValues[i] {
+
+	for i := 0; i < len(b); i++ {
+		if b[i] != r.lastValues[i] {
 			return true
+		}
+	}
+	for j := 0; j < len(f); j++ {
+		if r.lastFloats[j] == 0 {
+			if f[j] != 0 {
+				return true
+			}
+		} else {
+			diff := (f[j] - r.lastFloats[j]) / r.lastFloats[j]
+			if math.Abs(float64(diff)) > 0.1 {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-func (r *Reading) ChangeInFloat(new []float32) bool {
-	defer func() {
-		copy(r.lastFloats, new)
-		r.sent = true
-	}()
-	if !r.sent {
-		return true
-	}
-
-	for i, f := range new {
-		if r.lastFloats[i] == 0 && f == 0 {
-			continue
-		}
-		if r.lastFloats[i] == 0 && f != 0 {
-			return true
-		}
-		diff := (f - r.lastFloats[i]) / r.lastFloats[i]
-		if math.Abs(float64(diff)) > 0.1 {
-			return true
-		}
-	}
-	return false
+func (r *Reading) UpdateLastValues(b []bool, f []float32) {
+	copy(r.lastFloats, f)
+	copy(r.lastValues, b)
+	r.sent = true
 }
