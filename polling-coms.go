@@ -46,9 +46,89 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 	wFails := comFailures(InitWailonFails)
 	plcFails := comFailures(InitModbusFails)
 
-	sendNow := false
 	uploadedAt := time.Now()
 	readMemory := newReading(len(addrRead.logo), len(addrAnalog.logo))
+
+	sendData := func(sendNow bool) {
+		//log.Print("Tick")
+		inputAddrs := make([]uint16, 0)
+		coilAddrs := make([]uint16, 0)
+
+		for j, v := range addrRead.logo {
+			w := []rune(v)
+			switch w[0] {
+			case 'I':
+				inputAddrs = append(inputAddrs, addrRead.addr[j])
+			case 'Q':
+				coilAddrs = append(coilAddrs, addrRead.addr[j])
+			}
+		}
+
+		inputVals, err := plcConn.ReadInputs(inputAddrs)
+		if err != nil {
+			log.Printf("Error reading inputs: %v", err)
+			comFail(&plcFails)
+			return
+		}
+		coilVals, err := plcConn.ReadCoils(coilAddrs)
+		if err != nil {
+			log.Printf("Error reading coils: %v", err)
+			comFail(&plcFails)
+			return
+		}
+		anagVals, err := plcConn.ReadAnalog(addrAnalog.addr)
+		if err != nil {
+			log.Printf("Error reading analog inputs: %v", err)
+			log.Print(addrAnalog.addr)
+			comFail(&plcFails)
+			return
+		}
+		plcFails = InitModbusFails
+		if !sendNow && !readMemory.HaveChanged(coilVals, anagVals) &&
+			!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
+			//log.Print("No change in registers")
+			if err := wConn.SendPing(); err != nil {
+				log.Printf("Error sending ping: %v", err)
+				comFail(&wFails)
+				return
+			}
+			wFails = InitWailonFails
+			return
+		}
+		uploadedAt = time.Now()
+		readMemory.UpdateLastValues(coilVals, anagVals)
+
+		regReadings := append(inputVals, coilVals...)
+		dataStr := ""
+		for i, v := range regReadings {
+			name := addrRead.name[i]
+			value := 0
+			if v {
+				value = 1
+			}
+			if dataStr == "" {
+				dataStr = fmt.Sprintf("%s:3:%d", name, value)
+			} else {
+				dataStr = fmt.Sprintf("%s:3:%d,%s", name, value, dataStr)
+			}
+		}
+		bigWord := uint32(0)
+		for j, val := range anagVals {
+			name := addrAnalog.name[j]
+			if addrAnalog.logo[j] == "0" {
+				v := bigWord<<16 | uint32(val)
+				bigWord = uint32(0)
+				dataStr = fmt.Sprintf("%s:3:%.2f,%s", name, float64(v), dataStr)
+			} else {
+				bigWord = uint32(val)
+			}
+		}
+		err = wConn.SendData(dataStr)
+		if err != nil {
+			log.Printf("Error: %v", err)
+		}
+
+	}
 
 	cmdChan := make(chan string)
 	go func() {
@@ -71,90 +151,11 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//log.Print("Tick")
-			inputAddrs := make([]uint16, 0)
-			coilAddrs := make([]uint16, 0)
-
-			for j, v := range addrRead.logo {
-				w := []rune(v)
-				switch w[0] {
-				case 'I':
-					inputAddrs = append(inputAddrs, addrRead.addr[j])
-				case 'Q':
-					coilAddrs = append(coilAddrs, addrRead.addr[j])
-				}
-			}
-
-			inputVals, err := plcConn.ReadInputs(inputAddrs)
-			if err != nil {
-				log.Printf("Error reading inputs: %v", err)
-				comFail(&plcFails)
-				continue
-			}
-			coilVals, err := plcConn.ReadCoils(coilAddrs)
-			if err != nil {
-				log.Printf("Error reading coils: %v", err)
-				comFail(&plcFails)
-				continue
-			}
-			anagVals, err := plcConn.ReadAnalog(addrAnalog.addr)
-			if err != nil {
-				log.Printf("Error reading analog inputs: %v", err)
-				log.Print(addrAnalog.addr)
-				comFail(&plcFails)
-				continue
-			}
-			plcFails = InitModbusFails
-			if !sendNow && !readMemory.HaveChanged(coilVals, anagVals) &&
-				!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
-				//log.Print("No change in registers")
-				sendNow = false
-				if err := wConn.SendPing(); err != nil {
-					log.Printf("Error sending ping: %v", err)
-					comFail(&wFails)
-					continue
-				}
-				wFails = InitWailonFails
-				continue
-			}
-			uploadedAt = time.Now()
-			readMemory.UpdateLastValues(coilVals, anagVals)
-
-			regReadings := append(inputVals, coilVals...)
-			dataStr := ""
-			for i, v := range regReadings {
-				name := addrRead.name[i]
-				value := 0
-				if v {
-					value = 1
-				}
-				if dataStr == "" {
-					dataStr = fmt.Sprintf("%s:3:%d", name, value)
-				} else {
-					dataStr = fmt.Sprintf("%s:3:%d,%s", name, value, dataStr)
-				}
-			}
-			bigWord := uint32(0)
-			for j, val := range anagVals {
-				name := addrAnalog.name[j]
-				if addrAnalog.logo[j] == "0" {
-					v := bigWord<<16 | uint32(val)
-					bigWord = uint32(0)
-					dataStr = fmt.Sprintf("%s:3:%.2f,%s", name, float64(v), dataStr)
-				} else {
-					bigWord = uint32(val)
-				}
-			}
-			err = wConn.SendData(dataStr)
-			if err != nil {
-				log.Printf("Error: %v", err)
-			}
-
+			sendData(false)
 		case cmd := <-cmdChan:
 			cmdParts := strings.Split(cmd, "|")
 			code, message := cmdParts[0], cmdParts[1]
-
-			sendNow = true
+			sendData(true)
 			switch strings.ToUpper(code) {
 			case "TIMEOUT":
 				continue

@@ -38,7 +38,7 @@ setup_logo_service(){
       sudo chmod 775 start.sh
       sed -i "s/DIR/$PLC_DIR/g" start.sh
       sudo systemctl enable "$SERV_NAME.service" || echo "service does not exist"
-      sudo systemctl start "$SERV_NAME.service" || echo "service does not exist"
+      sudo systemctl restart "$SERV_NAME.service" || echo "service does not exist"
     else
       cp host-env/logo.service "$APP_DIR/"
       cd "$APP_DIR" || exit
