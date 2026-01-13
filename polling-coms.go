@@ -107,9 +107,9 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 				value = 1
 			}
 			if dataStr == "" {
-				dataStr = fmt.Sprintf("%s:3:%d", name, value)
+				dataStr = fmt.Sprintf("%s:1:%d", name, value)
 			} else {
-				dataStr = fmt.Sprintf("%s:3:%d,%s", name, value, dataStr)
+				dataStr = fmt.Sprintf("%s:1:%d,%s", name, value, dataStr)
 			}
 		}
 		bigWord := uint32(0)
@@ -118,7 +118,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 			if addrAnalog.logo[j] == "0" {
 				v := bigWord<<16 | uint32(val)
 				bigWord = uint32(0)
-				dataStr = fmt.Sprintf("%s:3:%.2f,%s", name, float64(v), dataStr)
+				dataStr = fmt.Sprintf("%s:1:%d,%s", name, v, dataStr)
 			} else {
 				bigWord = uint32(val)
 			}
