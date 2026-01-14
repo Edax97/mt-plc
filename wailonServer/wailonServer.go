@@ -13,10 +13,17 @@ type WailonConnection struct {
 	Imei string
 	conn net.Conn
 	mu   sync.Mutex
+	Url  string
+	Port string
 }
 
-func (c *WailonConnection) OpenSocket(ip, port string) error {
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", ip, port))
+func (c *WailonConnection) OpenSocket() error {
+
+	if c.conn != nil {
+		c.conn.Close()
+	}
+
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", c.Url, c.Port))
 	c.conn = conn
 	if err != nil {
 		return fmt.Errorf("opening socket, got: %w", err)
@@ -47,6 +54,8 @@ func (c *WailonConnection) CloseSocket() {
 func (c *WailonConnection) SendData(params string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	c.OpenSocket()
 
 	t := time.Now()
 	date := t.In(time.UTC).Format("020106")

@@ -14,7 +14,7 @@ import (
 )
 
 type IDataIO interface {
-	OpenSocket(ip, port string) error
+	OpenSocket() error
 	SendPing() error
 	CloseSocket()
 	SendData(params string) error

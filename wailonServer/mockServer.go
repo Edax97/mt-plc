@@ -7,10 +7,12 @@ import (
 )
 
 type MockServer struct {
+	ip   string
+	port string
 }
 
-func (s *MockServer) OpenSocket(ip, port string) error {
-	log.Printf("serverd mocked at %s:%s", ip, port)
+func (s *MockServer) OpenSocket() error {
+	log.Printf("serverd mocked at %s:%s", s.ip, s.port)
 	return nil
 }
 
@@ -49,8 +51,8 @@ func (s *MockServer) ReadCommand() (string, string, error) {
 
 }
 
-func NewMockServer() *MockServer {
-	return &MockServer{}
+func NewMockServer(ip, port string) *MockServer {
+	return &MockServer{ip, port}
 }
 
 func (s *MockServer) SendTimeValue(imei string, date time.Time, wh string, vah string, vao string) (bool, error) {

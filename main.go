@@ -70,7 +70,7 @@ func main() {
 	if err != nil {
 		timeoutMs = 2500
 	}
-	period := flag.Int("period", 10, "Periodo de polling en s")
+	period := flag.Int("period", 30, "Periodo de polling en s")
 	uploadMin := flag.Int("uploadMin", 10, "Periodo para upload en min")
 	flag.Parse()
 
@@ -89,11 +89,11 @@ func main() {
 	var wailonCon IDataIO
 
 	if isMock == "1" {
-		wailonCon = wailonServer.NewMockServer()
+		wailonCon = wailonServer.NewMockServer(UrlWailon, PortWailon)
 	} else {
-		wailonCon = &wailonServer.WailonConnection{Imei: Imei}
+		wailonCon = &wailonServer.WailonConnection{Imei: Imei, Url: UrlWailon, Port: PortWailon}
 	}
-	err = wailonCon.OpenSocket(UrlWailon, PortWailon)
+	err = wailonCon.OpenSocket()
 	if err != nil {
 		log.Fatalf("no se pudo conectar al servidor wailon: %v", err)
 	}
