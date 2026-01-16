@@ -160,30 +160,32 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 			case "TIMEOUT":
 				continue
 			case "W":
-				parts := strings.Split(message, "=")
-				if len(parts) != 2 {
-					log.Printf("malformed command: %s", cmd)
-					continue
-				}
-				varName := strings.Trim(parts[0], " ")
-				set := false
-				if strings.Trim(parts[1], " \r\n") == "1" {
-					set = true
-				}
-				log.Printf("Comand %s=%t", varName, set)
-
-				notFound := true
-				for i, regName := range addrWrite.name {
-					if varName == regName {
-						if err := plcConn.WriteCoil(addrWrite.addr[i], set); err != nil {
-							log.Printf("error at %s=%t: %s", varName, set, err)
-							continue
-						}
-						notFound = false
+				for line := range strings.SplitSeq(message, ";") {
+					parts := strings.Split(line, "=")
+					if len(parts) != 2 {
+						log.Printf("malformed command: %s", cmd)
+						continue
 					}
-				}
-				if notFound {
-					log.Printf("not found variable: %s", varName)
+					varName := strings.Trim(parts[0], " ")
+					set := false
+					if strings.Trim(parts[1], " \r\n") == "1" {
+						set = true
+					}
+					log.Printf("Comand %s=%t", varName, set)
+
+					notFound := true
+					for i, regName := range addrWrite.name {
+						if varName == regName {
+							notFound = false
+							if err := plcConn.WriteCoil(addrWrite.addr[i], set); err != nil {
+								log.Printf("error at %s=%t: %s", varName, set, err)
+							}
+						}
+					}
+					if notFound {
+						log.Printf("not found variable: %s", varName)
+					}
+
 				}
 			case "GS":
 				en := os.Getenv("GENSET_COMMANDS")
