@@ -155,7 +155,6 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 		case cmd := <-cmdChan:
 			cmdParts := strings.Split(cmd, "|")
 			code, message := cmdParts[0], cmdParts[1]
-			sendData(true)
 			switch strings.ToUpper(code) {
 			case "TIMEOUT":
 				continue
@@ -204,6 +203,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 					}
 				}
 			}
+			sendData(true)
 		}
 	}
 }
