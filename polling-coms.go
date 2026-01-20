@@ -207,6 +207,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 					}
 				}
 			}
+			time.Sleep(time.Millisecond * 500)
 			sendData(true)
 		}
 	}

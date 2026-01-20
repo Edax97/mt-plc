@@ -9,7 +9,7 @@ import (
 	"github.com/goburrow/modbus"
 )
 
-const triesLimit = 2
+const triesLimit = 3
 
 type ModbusConn struct {
 	handler *modbus.TCPClientHandler
@@ -31,7 +31,6 @@ func NewModbusConn(address string, timeout time.Duration) (*ModbusConn, error) {
 
 func (c *ModbusConn) Reconnect() {
 	_ = c.Close()
-	time.Sleep(time.Millisecond * 100)
 	if c.handler == nil {
 		return
 	}
