@@ -3,27 +3,52 @@ package modbusClient
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/goburrow/modbus"
 )
 
+const backOffLimit = 2
+
 type ModbusConn struct {
 	handler *modbus.TCPClientHandler
+	client  modbus.Client
+	backOff int
 }
 
 func NewModbusConn(address string, timeout time.Duration) (*ModbusConn, error) {
 	h := modbus.NewTCPClientHandler(address)
 	h.Timeout = timeout
+	h.IdleTimeout = time.Hour
 	h.SlaveId = 1 // LOGO! por defecto usa ID 1 cuando está detrás de TCP gateway
-	return &ModbusConn{handler: h}, nil
-}
-
-func (c *ModbusConn) StartConnection() (modbus.Client, error) {
-	if err := c.handler.Connect(); err != nil {
+	if err := h.Connect(); err != nil {
+		_ = h.Close()
 		return nil, err
 	}
-	return modbus.NewClient(c.handler), nil
+	c := modbus.NewClient(h)
+	return &ModbusConn{handler: h, client: c, backOff: 0}, nil
+}
+
+func (c *ModbusConn) Reconnect() {
+	_ = c.Close()
+	time.Sleep(time.Millisecond * 100 * time.Duration(1+c.backOff))
+	if c.handler == nil {
+		return
+	}
+	if err := c.handler.Connect(); err != nil {
+		log.Printf("could not connect")
+		_ = c.handler.Close()
+		c.backOff++
+		if c.backOff >= backOffLimit {
+			c.Reconnect()
+		} else {
+			c.backOff = 0
+		}
+		return
+	}
+	c.client = modbus.NewClient(c.handler)
+
 }
 
 func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
@@ -35,15 +60,9 @@ func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	iEnd := extremeValue(addressList, max16)
 	iQty := iEnd - iStart + 1
 
-	client, err := c.StartConnection()
+	iRegs, err := c.client.ReadDiscreteInputs(iStart, iQty)
 	if err != nil {
-		return []bool{}, fmt.Errorf("when connecting, %w", err)
-	}
-	defer func() {
-		_ = c.Close()
-	}()
-	iRegs, err := client.ReadDiscreteInputs(iStart, iQty)
-	if err != nil {
+		c.Reconnect()
 		return nil, err
 	}
 
@@ -64,15 +83,9 @@ func (c *ModbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 	qEnd := extremeValue(addressList, max16)
 	qQty := qEnd - qStart + 1
 
-	client, err := c.StartConnection()
+	qRegs, err := c.client.ReadCoils(qStart, qQty)
 	if err != nil {
-		return []bool{}, fmt.Errorf("when connecting, %w", err)
-	}
-	defer func() {
-		_ = c.Close()
-	}()
-	qRegs, err := client.ReadCoils(qStart, qQty)
-	if err != nil {
+		c.Reconnect()
 		return nil, err
 	}
 
@@ -91,14 +104,6 @@ func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 		return analogs, nil
 	}
 
-	client, err := c.StartConnection()
-	if err != nil {
-		return []float32{}, fmt.Errorf("when connecting, %w", err)
-	}
-	defer func() {
-		_ = c.Close()
-	}()
-
 	aData := struct {
 		aStart uint16
 		aQty   uint16
@@ -109,8 +114,9 @@ func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 			aj = addressList[j]
 		}
 		if aj > aData.aStart+aData.aQty || j == len(addressList) {
-			b, err := client.ReadInputRegisters(aData.aStart, aData.aQty)
+			b, err := c.client.ReadInputRegisters(aData.aStart, aData.aQty)
 			if err != nil {
+				c.Reconnect()
 				return nil, err
 			}
 			bytesArr = append(bytesArr, b...)
@@ -163,40 +169,32 @@ func (c *ModbusConn) WriteCoil(address uint16, value bool) error {
 	} else {
 		v = 0x0000
 	}
-	client, err := c.StartConnection()
-	if err != nil {
-		return fmt.Errorf("when connecting, %w", err)
+	if _, err := c.client.WriteSingleCoil(address, v); err != nil {
+		c.Reconnect()
+		return err
 	}
-	defer func() {
-		_ = c.Close()
-	}()
-	_, err = client.WriteSingleCoil(address, v)
-	return err
+	return nil
 }
 
 func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress uint16, argValue uint32) (uint32, error) {
-	client, err := c.StartConnection()
-	defer func() {
-		_ = c.Close()
-	}()
-	if err != nil {
-		return 0, fmt.Errorf("when connecting, %w", err)
-	}
 	// 0x01FE0000 -> byte
 	argBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(argBytes, argValue)
-	_, err = client.WriteMultipleRegisters(argAddress, 2, argBytes)
+	_, err := c.client.WriteMultipleRegisters(argAddress, 2, argBytes)
 	if err != nil {
+		c.Reconnect()
 		return 0, fmt.Errorf("writing argument, %w", err)
 	}
 	// 0x0001
-	_, err = client.WriteSingleRegister(cmdAddress, cmdValue)
+	_, err = c.client.WriteSingleRegister(cmdAddress, cmdValue)
 	if err != nil {
+		c.Reconnect()
 		return 0, fmt.Errorf("writing command: %w", err)
 	}
 
-	b, err := client.ReadHoldingRegisters(argAddress, 2)
+	b, err := c.client.ReadHoldingRegisters(argAddress, 2)
 	if err != nil {
+		c.Reconnect()
 		return 0, fmt.Errorf("reading return value: %w", err)
 	}
 	reg1 := getFloat(b, 0)
