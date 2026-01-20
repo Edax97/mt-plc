@@ -9,7 +9,7 @@ import (
 	"github.com/goburrow/modbus"
 )
 
-const triesLimit = 3
+const triesLimit = 4
 
 type ModbusConn struct {
 	handler *modbus.TCPClientHandler
@@ -55,7 +55,7 @@ func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 
 	iRegs, err := tryNTimes(func() ([]byte, error) {
 		return c.client.ReadDiscreteInputs(iStart, iQty)
-	}, c.Reconnect, triesLimit)
+	}, c.Close, c.Reconnect, triesLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (c *ModbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 
 	qRegs, err := tryNTimes(func() ([]byte, error) {
 		return c.client.ReadCoils(qStart, qQty)
-	}, c.Reconnect, triesLimit)
+	}, c.Close, c.Reconnect, triesLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 		if aj > aData.aStart+aData.aQty || j == len(addressList) {
 			b, err := tryNTimes(func() ([]byte, error) {
 				return c.client.ReadInputRegisters(aData.aStart, aData.aQty)
-			}, c.Reconnect, triesLimit)
+			}, c.Close, c.Reconnect, triesLimit)
 			if err != nil {
 				return nil, err
 			}
@@ -168,7 +168,7 @@ func (c *ModbusConn) WriteCoil(address uint16, value bool) error {
 	}
 	if _, err := tryNTimes(func() ([]byte, error) {
 		return c.client.WriteSingleCoil(address, v)
-	}, c.Reconnect, triesLimit); err != nil {
+	}, c.Close, c.Reconnect, triesLimit); err != nil {
 		return err
 	}
 	return nil
@@ -180,21 +180,21 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	binary.BigEndian.PutUint32(argBytes, argValue)
 	_, err := tryNTimes(func() ([]byte, error) {
 		return c.client.WriteMultipleRegisters(argAddress, 2, argBytes)
-	}, c.Reconnect, triesLimit)
+	}, c.Close, c.Reconnect, triesLimit)
 	if err != nil {
 		return 0, fmt.Errorf("writing argument, %w", err)
 	}
 	// 0x0001
 	_, err = tryNTimes(func() ([]byte, error) {
 		return c.client.WriteSingleRegister(cmdAddress, cmdValue)
-	}, c.Reconnect, triesLimit)
+	}, c.Close, c.Reconnect, triesLimit)
 	if err != nil {
 		return 0, fmt.Errorf("writing command: %w", err)
 	}
 
 	b, err := tryNTimes(func() ([]byte, error) {
 		return c.client.ReadHoldingRegisters(argAddress, 2)
-	}, c.Reconnect, triesLimit)
+	}, c.Close, c.Reconnect, triesLimit)
 	if err != nil {
 		return 0, fmt.Errorf("reading return value: %w", err)
 	}

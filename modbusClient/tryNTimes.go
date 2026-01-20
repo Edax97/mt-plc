@@ -3,9 +3,11 @@ package modbusClient
 import "time"
 
 type tryFuncT func() ([]byte, error)
+
+type closeFuncT func() error
 type failFuncT func()
 
-func tryNTimes(tryFunc tryFuncT, failFunc failFuncT, n int) ([]byte, error) {
+func tryNTimes(tryFunc tryFuncT, closeFunc closeFuncT, failFunc failFuncT, n int) ([]byte, error) {
 	tries := 1
 	for {
 		b, err := tryFunc()
@@ -15,7 +17,8 @@ func tryNTimes(tryFunc tryFuncT, failFunc failFuncT, n int) ([]byte, error) {
 		if tries == n {
 			return nil, err
 		}
-		time.Sleep(time.Millisecond * 80 * time.Duration(tries*tries-tries+1))
+		_ = closeFunc()
+		time.Sleep(time.Millisecond * 70 * time.Duration(tries*tries-tries+1))
 		tries = tries + 1
 		failFunc()
 	}
