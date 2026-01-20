@@ -70,12 +70,14 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 			comFail(&plcFails)
 			return
 		}
+		time.Sleep(time.Millisecond * 50)
 		coilVals, err := plcConn.ReadCoils(coilAddrs)
 		if err != nil {
 			log.Printf("Error reading coils: %v", err)
 			comFail(&plcFails)
 			return
 		}
+		time.Sleep(time.Millisecond * 50)
 		anagVals, err := plcConn.ReadAnalog(addrAnalog.addr)
 		if err != nil {
 			log.Printf("Error reading analog inputs: %v", err)
@@ -83,6 +85,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 			comFail(&plcFails)
 			return
 		}
+		time.Sleep(time.Millisecond * 50)
 		plcFails = InitModbusFails
 		if !sendNow && !readMemory.HaveChanged(coilVals, anagVals) &&
 			!uploadedAt.Add(uploadPeriod).Before(time.Now()) {
@@ -179,6 +182,7 @@ func pollLoop(ctx context.Context, plcConn *modbusClient.ModbusConn, wConn IData
 							if err := plcConn.WriteCoil(addrWrite.addr[i], set); err != nil {
 								log.Printf("error at %s=%t: %s", varName, set, err)
 							}
+							time.Sleep(time.Millisecond * 50)
 						}
 					}
 					if notFound {

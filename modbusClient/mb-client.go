@@ -9,12 +9,11 @@ import (
 	"github.com/goburrow/modbus"
 )
 
-const backOffLimit = 2
+const triesLimit = 2
 
 type ModbusConn struct {
 	handler *modbus.TCPClientHandler
 	client  modbus.Client
-	backOff int
 }
 
 func NewModbusConn(address string, timeout time.Duration) (*ModbusConn, error) {
@@ -27,24 +26,19 @@ func NewModbusConn(address string, timeout time.Duration) (*ModbusConn, error) {
 		return nil, err
 	}
 	c := modbus.NewClient(h)
-	return &ModbusConn{handler: h, client: c, backOff: 0}, nil
+	return &ModbusConn{handler: h, client: c}, nil
 }
 
 func (c *ModbusConn) Reconnect() {
 	_ = c.Close()
-	time.Sleep(time.Millisecond * 100 * time.Duration(1+c.backOff))
+	time.Sleep(time.Millisecond * 100)
 	if c.handler == nil {
 		return
 	}
 	if err := c.handler.Connect(); err != nil {
 		log.Printf("could not connect")
 		_ = c.handler.Close()
-		c.backOff++
-		if c.backOff >= backOffLimit {
-			c.Reconnect()
-		} else {
-			c.backOff = 0
-		}
+
 		return
 	}
 	c.client = modbus.NewClient(c.handler)
@@ -60,9 +54,10 @@ func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 	iEnd := extremeValue(addressList, max16)
 	iQty := iEnd - iStart + 1
 
-	iRegs, err := c.client.ReadDiscreteInputs(iStart, iQty)
+	iRegs, err := tryNTimes(func() ([]byte, error) {
+		return c.client.ReadDiscreteInputs(iStart, iQty)
+	}, c.Reconnect, triesLimit)
 	if err != nil {
-		c.Reconnect()
 		return nil, err
 	}
 
@@ -71,6 +66,7 @@ func (c *ModbusConn) ReadInputs(addressList []uint16) ([]bool, error) {
 		inputBool[j] = b
 	}
 	return inputBool, nil
+
 }
 
 func (c *ModbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
@@ -83,9 +79,10 @@ func (c *ModbusConn) ReadCoils(addressList []uint16) ([]bool, error) {
 	qEnd := extremeValue(addressList, max16)
 	qQty := qEnd - qStart + 1
 
-	qRegs, err := c.client.ReadCoils(qStart, qQty)
+	qRegs, err := tryNTimes(func() ([]byte, error) {
+		return c.client.ReadCoils(qStart, qQty)
+	}, c.Reconnect, triesLimit)
 	if err != nil {
-		c.Reconnect()
 		return nil, err
 	}
 
@@ -114,9 +111,10 @@ func (c *ModbusConn) ReadAnalog(addressList []uint16) ([]float32, error) {
 			aj = addressList[j]
 		}
 		if aj > aData.aStart+aData.aQty || j == len(addressList) {
-			b, err := c.client.ReadInputRegisters(aData.aStart, aData.aQty)
+			b, err := tryNTimes(func() ([]byte, error) {
+				return c.client.ReadInputRegisters(aData.aStart, aData.aQty)
+			}, c.Reconnect, triesLimit)
 			if err != nil {
-				c.Reconnect()
 				return nil, err
 			}
 			bytesArr = append(bytesArr, b...)
@@ -169,8 +167,9 @@ func (c *ModbusConn) WriteCoil(address uint16, value bool) error {
 	} else {
 		v = 0x0000
 	}
-	if _, err := c.client.WriteSingleCoil(address, v); err != nil {
-		c.Reconnect()
+	if _, err := tryNTimes(func() ([]byte, error) {
+		return c.client.WriteSingleCoil(address, v)
+	}, c.Reconnect, triesLimit); err != nil {
 		return err
 	}
 	return nil
@@ -180,21 +179,24 @@ func (c *ModbusConn) WriteCommand(cmdAddress uint16, cmdValue uint16, argAddress
 	// 0x01FE0000 -> byte
 	argBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(argBytes, argValue)
-	_, err := c.client.WriteMultipleRegisters(argAddress, 2, argBytes)
+	_, err := tryNTimes(func() ([]byte, error) {
+		return c.client.WriteMultipleRegisters(argAddress, 2, argBytes)
+	}, c.Reconnect, triesLimit)
 	if err != nil {
-		c.Reconnect()
 		return 0, fmt.Errorf("writing argument, %w", err)
 	}
 	// 0x0001
-	_, err = c.client.WriteSingleRegister(cmdAddress, cmdValue)
+	_, err = tryNTimes(func() ([]byte, error) {
+		return c.client.WriteSingleRegister(cmdAddress, cmdValue)
+	}, c.Reconnect, triesLimit)
 	if err != nil {
-		c.Reconnect()
 		return 0, fmt.Errorf("writing command: %w", err)
 	}
 
-	b, err := c.client.ReadHoldingRegisters(argAddress, 2)
+	b, err := tryNTimes(func() ([]byte, error) {
+		return c.client.ReadHoldingRegisters(argAddress, 2)
+	}, c.Reconnect, triesLimit)
 	if err != nil {
-		c.Reconnect()
 		return 0, fmt.Errorf("reading return value: %w", err)
 	}
 	reg1 := getFloat(b, 0)
