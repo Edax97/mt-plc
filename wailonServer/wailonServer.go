@@ -93,8 +93,8 @@ func (c *WailonConnection) ReadCommand() (kind string, value string, e error) {
 	}
 
 	parts := strings.Split(headerMessage[1], "#")
-	if len(parts) != 4 || parts[0] != "" || parts[3] != "" {
-		return "", "", fmt.Errorf("incomplete response: %s", data)
+	if len(parts) != 4 || parts[0] != "" {
+		return "", "", fmt.Errorf("incomplete response: %s", headerMessage[1])
 	}
 	kind = parts[1]
 	value = parts[2]
