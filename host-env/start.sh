@@ -1,4 +1,4 @@
 #!/bin/bash
 
 cd /home/pi/DIR || exit
-./bin -period=15
+./bin -period=10
